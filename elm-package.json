@@ -2,10 +2,13 @@
     "version": "1.0.0",
     "summary": "Sigma elm study project",
     "repository": "https://github.com/foriequal0/elm-study.git",
+    "license": "BSD3",
     "source-directories": [
-        "src"
+        "src/hw01"
     ],
-    "exposed-modules": [],
+    "exposed-modules": [
+        "FP"
+    ],
     "dependencies": {
         "elm-lang/core": "2.1.0 <= v < 3.0.0"
     },
