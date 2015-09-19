@@ -35,10 +35,12 @@ toText = Text.fromString << toString
 view : (Int,Int) -> State -> Element
 view (w,h) st =
   let m = min w h
+      a = (st |> fst |> fst |> toFloat)
+      b = (st |> snd |> fst |> toFloat)
   in collage m m
             <| List.map (pointElement (toFloat m) red) (st |> fst |> snd)
                  `List.append` List.map (pointElement (toFloat m) green) (st |> snd |> snd)
-                 `List.append` [text <| toText ((st |> fst |> fst |> toFloat)/(st |> snd |> fst |> toFloat))]
+                 `List.append` [text <| toText (4*a/(a+b))]
 
 
 pointElement : Float -> Color -> Point -> Form
