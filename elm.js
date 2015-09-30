@@ -6873,10 +6873,16 @@ Elm.Pi.make = function (_elm) {
    $Random = Elm.Random.make(_elm),
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
-   $Text = Elm.Text.make(_elm),
    $Time = Elm.Time.make(_elm),
    $Window = Elm.Window.make(_elm);
-   var genPoint = function (s) {
+   var fadeoutUpdate = F2(function (time,
+   state) {
+      return _U.replace([["time"
+                         ,time]],
+      state);
+   });
+   var genPoint = F2(function (t,
+   s) {
       return function () {
          var $ = A2($Random.generate,
          A2($Random.$float,-1.0,1.0),
@@ -6888,175 +6894,194 @@ Elm.Pi.make = function (_elm) {
          s1),
          ry = $._0,
          s2 = $._1;
+         var hit = _U.cmp($Basics.sqrt(Math.pow(rx,
+         2) + Math.pow(ry,2)),
+         1) < 0;
          return {ctor: "_Tuple2"
-                ,_0: {_: {},x: rx,y: ry}
+                ,_0: {_: {}
+                     ,hit: hit
+                     ,timestamp: t
+                     ,x: rx
+                     ,y: ry}
                 ,_1: s2};
       }();
-   };
-   var signalPointSeed = A3($Signal.foldp,
-   F2(function (_v0,st) {
-      return function () {
-         return genPoint($Basics.snd(st));
-      }();
-   }),
-   genPoint($Random.initialSeed(0)),
-   $Time.fps(500));
-   var signalPoint = A2($Signal._op["<~"],
-   $Basics.fst,
-   signalPointSeed);
-   var pointElement = F3(function (s,
-   c,
-   p) {
-      return $Graphics$Collage.move({ctor: "_Tuple2"
-                                    ,_0: p.x * s / 2
-                                    ,_1: p.y * s / 2})($Graphics$Collage.filled(c)($Graphics$Collage.circle(5)));
    });
-   var toText = function ($) {
-      return $Text.fromString($Basics.toString($));
-   };
-   var view = F2(function (_v2,
-   st) {
+   var setAlpha = F2(function (c,
+   a) {
       return function () {
-         switch (_v2.ctor)
+         var rgb = $Color.toRgb(c);
+         return A4($Color.rgba,
+         rgb.red,
+         rgb.green,
+         rgb.blue,
+         a);
+      }();
+   });
+   var fadeout = 10;
+   var pointElement = F3(function (scale,
+   time,
+   point) {
+      return function () {
+         var color = point.hit ? $Color.red : $Color.green;
+         var ttl = $Time.second * fadeout;
+         var alpha = A2($Basics.clamp,
+         0,
+         1)((ttl - (time - point.timestamp)) / ttl);
+         return $Graphics$Collage.move({ctor: "_Tuple2"
+                                       ,_0: point.x * scale / 2
+                                       ,_1: point.y * scale / 2})($Graphics$Collage.filled(A2(setAlpha,
+         color,
+         alpha))($Graphics$Collage.circle(5)));
+      }();
+   });
+   var view = F2(function (_v0,
+   state) {
+      return function () {
+         switch (_v0.ctor)
          {case "_Tuple2":
             return function () {
-                 var b = $Basics.toFloat($Basics.fst($Basics.snd(st)));
-                 var a = $Basics.toFloat($Basics.fst($Basics.fst(st)));
-                 var m = A2($Basics.min,
-                 _v2._0,
-                 _v2._1);
+                 var max = A2($Basics.min,
+                 _v0._0,
+                 _v0._1);
+                 var scale = $Basics.toFloat(max);
                  return A2($Graphics$Collage.collage,
-                 m,
-                 m)(A2($List.append,
-                 A2($List.append,
-                 A2($List.map,
+                 max,
+                 max)(A2($List.map,
                  A2(pointElement,
-                 $Basics.toFloat(m),
-                 $Color.red),
-                 $Basics.snd($Basics.fst(st))),
-                 A2($List.map,
-                 A2(pointElement,
-                 $Basics.toFloat(m),
-                 $Color.green),
-                 $Basics.snd($Basics.snd(st)))),
-                 _L.fromArray([$Graphics$Collage.text(toText(4 * a / (a + b)))])));
+                 scale,
+                 state.time),
+                 state.list));
               }();}
          _U.badCase($moduleName,
-         "between lines 37 and 43");
+         "between lines 59 and 62");
       }();
    });
-   var upstate = F2(function (pt,
-   st) {
+   var genRate = 60;
+   var listLength = genRate * fadeout;
+   var signalPointSeed = function () {
+      var initial = A2(genPoint,
+      0,
+      $Random.initialSeed(0));
+      return A2($Signal.foldp,
+      F2(function (t,st) {
+         return A2(genPoint,
+         t,
+         $Basics.snd(st));
+      }),
+      initial)($Time.every($Time.second / genRate));
+   }();
+   var fps = 60;
+   var initState = {_: {}
+                   ,hit: 0
+                   ,list: _L.fromArray([])
+                   ,time: 0
+                   ,total: 0};
+   var pushAndPop = F3(function (c,
+   list,
+   i) {
+      return $List.take(c)(A2($List._op["::"],
+      i,
+      list));
+   });
+   var shootUpdate = F2(function (point,
+   state) {
+      return point.hit ? _U.replace([["hit"
+                                     ,state.hit + 1]
+                                    ,["total",state.total + 1]
+                                    ,["list"
+                                     ,A3(pushAndPop,
+                                     listLength,
+                                     state.list,
+                                     point)]],
+      state) : _U.replace([["total"
+                           ,state.total + 1]
+                          ,["list"
+                           ,A3(pushAndPop,
+                           listLength,
+                           state.list,
+                           point)]],
+      state);
+   });
+   var upstate = F2(function (event,
+   state) {
       return function () {
-         var r = $Basics.sqrt(Math.pow(pt.x,
-         2) + Math.pow(pt.y,2));
-         return _U.cmp(r,
-         1) < 1 ? function () {
-            var _ = st;
-            var count = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._0.ctor)
-                    {case "_Tuple2":
-                       return _._0._0;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 26, column 39 to 41");
-            }();
-            var list = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._0.ctor)
-                    {case "_Tuple2":
-                       return _._0._1;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 26, column 39 to 41");
-            }();
-            var right = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._0.ctor)
-                    {case "_Tuple2": return _._1;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 26, column 39 to 41");
-            }();
-            return {ctor: "_Tuple2"
-                   ,_0: {ctor: "_Tuple2"
-                        ,_0: count + 1
-                        ,_1: A2($List._op["::"],
-                        pt,
-                        list)}
-                   ,_1: right};
-         }() : function () {
-            var _ = st;
-            var count = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._1.ctor)
-                    {case "_Tuple2":
-                       return _._1._0;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 29, column 38 to 40");
-            }();
-            var left = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._1.ctor)
-                    {case "_Tuple2": return _._0;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 29, column 38 to 40");
-            }();
-            var list = function () {
-               switch (_.ctor)
-               {case "_Tuple2":
-                  switch (_._1.ctor)
-                    {case "_Tuple2":
-                       return _._1._1;}
-                    break;}
-               _U.badCase($moduleName,
-               "on line 29, column 38 to 40");
-            }();
-            return {ctor: "_Tuple2"
-                   ,_0: left
-                   ,_1: {ctor: "_Tuple2"
-                        ,_0: count + 1
-                        ,_1: A2($List._op["::"],
-                        pt,
-                        list)}};
-         }();
+         switch (event.ctor)
+         {case "Repaint":
+            return A2(fadeoutUpdate,
+              event._0,
+              state);
+            case "Shoot":
+            return A2(shootUpdate,
+              event._0,
+              state);}
+         _U.badCase($moduleName,
+         "between lines 136 and 140");
       }();
    });
-   var initState = {ctor: "_Tuple2"
-                   ,_0: {ctor: "_Tuple2"
-                        ,_0: 0
-                        ,_1: _L.fromArray([])}
-                   ,_1: {ctor: "_Tuple2"
-                        ,_0: 0
-                        ,_1: _L.fromArray([])}};
+   var State = F4(function (a,
+   b,
+   c,
+   d) {
+      return {_: {}
+             ,hit: b
+             ,list: d
+             ,time: a
+             ,total: c};
+   });
+   var Point = F4(function (a,
+   b,
+   c,
+   d) {
+      return {_: {}
+             ,hit: c
+             ,timestamp: d
+             ,x: a
+             ,y: b};
+   });
+   var Shoot = function (a) {
+      return {ctor: "Shoot",_0: a};
+   };
+   var signalPoint = A2($Signal._op["<~"],
+   function ($) {
+      return Shoot($Basics.fst($));
+   },
+   signalPointSeed);
+   var Repaint = function (a) {
+      return {ctor: "Repaint"
+             ,_0: a};
+   };
+   var signalRepaint = A2($Signal._op["<~"],
+   Repaint,
+   $Time.every($Time.second / fps));
    var main = A3($Signal.map2,
    view,
    $Window.dimensions,
-   A3($Signal.foldp,
+   A2($Signal.foldp,
    upstate,
-   initState,
-   signalPoint));
-   var Point = F2(function (a,b) {
-      return {_: {},x: a,y: b};
-   });
+   initState)(A2($Signal.merge,
+   signalPoint,
+   signalRepaint)));
    _elm.Pi.values = {_op: _op
+                    ,Repaint: Repaint
+                    ,Shoot: Shoot
                     ,Point: Point
+                    ,State: State
+                    ,pushAndPop: pushAndPop
                     ,initState: initState
-                    ,upstate: upstate
-                    ,toText: toText
+                    ,fps: fps
+                    ,genRate: genRate
+                    ,fadeout: fadeout
+                    ,listLength: listLength
                     ,view: view
+                    ,setAlpha: setAlpha
                     ,pointElement: pointElement
                     ,genPoint: genPoint
+                    ,signalRepaint: signalRepaint
                     ,signalPointSeed: signalPointSeed
                     ,signalPoint: signalPoint
+                    ,shootUpdate: shootUpdate
+                    ,fadeoutUpdate: fadeoutUpdate
+                    ,upstate: upstate
                     ,main: main};
    return _elm.Pi.values;
 };
