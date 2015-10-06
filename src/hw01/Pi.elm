@@ -76,7 +76,7 @@ pointElement scale time point =
     color = if point.hit then Color.red else Color.green
     alpha = clamp 0 1 <| (ttl - (time - point.timestamp)) / ttl
   in
-    circle 5
+    ngon 3 5
       |> filled (setAlpha color alpha)
       |> move (point.x * scale/2, point.y * scale/2)
 
@@ -90,14 +90,14 @@ genPoint t s =
 
 
 signalRepaint : Signal Event
-signalRepaint = Repaint <~ Time.every (Time.second / fps)
+signalRepaint = Repaint << fst <~ (Time.timestamp <| Time.fps fps)
 
 
 signalPointSeed : Signal (Point, Random.Seed)
 signalPointSeed =
   let initial = genPoint 0 (Random.initialSeed 0)
   in
-    Signal.foldp (\t st -> genPoint t (snd st)) initial <| Time.every (Time.second / genRate)
+    Signal.foldp (\t st -> genPoint t (snd st)) initial <| fst <~ (Time.timestamp <| Time.fps genRate)
           
 
 signalPoint : Signal Event
