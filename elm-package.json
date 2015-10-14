@@ -4,10 +4,12 @@
     "repository": "https://github.com/foriequal0/elm-study.git",
     "license": "BSD3",
     "source-directories": [
-        "src/hw01"
+        "src/hw01",
+        "src/hw02"
     ],
     "exposed-modules": [
-        "FP"
+        "FP",
+        "ListsandTrees"
     ],
     "dependencies": {
         "elm-lang/core": "2.1.0 <= v < 3.0.0"
