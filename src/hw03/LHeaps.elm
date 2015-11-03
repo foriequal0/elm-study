@@ -1,6 +1,6 @@
 module LHeaps where
 
-import List ((::))
+import List exposing ((::))
 import List
 
 {-- Copied from LeftistHeaps.elm from class. DO NOT MODIFY. -------------}
@@ -27,13 +27,36 @@ merge h1 h2 = case (h1, h2) of
 
 {------------------------------------------------------------------------}
 
+ {-- slow. O(n) --}
 insert : Int -> Heap -> Heap
-insert _ _ =
-  -- TODO
-  E
+insert x h =
+  case h of
+    E ->
+      T 1 x E E
+        
+    T _ v l r ->
+      let mn = min x v
+          mx = max x v
+      in makeT mn (insert mx l) r
 
+mergePair : List Heap -> List Heap
+mergePair l =
+  case l of
+    h1::h2::t -> merge h1 h2 :: mergePair t
+    [x] -> [x]
+    [] -> []
+
+makePass : List Heap -> List Heap
+makePass l =
+  let len = List.length l in
+  if | len > 1 -> makePass <| mergePair l
+     | otherwise -> l
+    
 fromList : List Int -> Heap
-fromList _ =
-  -- TODO
-  E
+fromList l =
+  let h = List.head <| makePass <| List.map (\x -> makeT x E E) l
+  in case h of
+       Just x -> x
 
+       
+        
